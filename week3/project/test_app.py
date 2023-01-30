@@ -20,41 +20,67 @@ It would be nice to write some tests to ensure we don't regress!
 
 def test_root():
     """
-    [TO BE IMPLEMENTED]
     Test the root ("/") endpoint, which just returns a {"Hello": "World"} json response
     """
-    pass
+    with TestClient(app) as client:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert response.json() == {"Hello": "World"}
+
 
 
 def test_predict_empty():
     """
-    [TO BE IMPLEMENTED]
     Test the "/predict" endpoint, with an empty request body
     """
-    pass
+    with TestClient(app) as client:
+        response = client.post("/predict", 
+        json={})
+        assert response.status_code == 422
 
 
 def test_predict_en_lang():
     """
-    [TO BE IMPLEMENTED]
     Test the "/predict" endpoint, with an input text in English (you can use one of the test cases provided in README.md)
     """
-    pass
-
+    with TestClient(app) as client:
+        response = client.post("/predict", 
+        json={
+            "source": "BBC Technology",
+            "url": "http://news.bbc.co.uk/go/click/rss/0.91/public/-/2/hi/business/4144939.stm",
+            "title": "System gremlins resolved at HSBC",
+            "description": "Computer glitches which led to chaos for HSBC customers on Monday are fixed, the High Street bank confirms."
+        })
+        assert response.status_code == 200
+        assert response.json()["label"] == "Business"
 
 def test_predict_es_lang():
     """
-    [TO BE IMPLEMENTED]
     Test the "/predict" endpoint, with an input text in Spanish. 
     Does the tokenizer and classifier handle this case correctly? Does it return an error?
     """
-    pass
+    response = client.post("/predict", 
+    json={
+        "source": "CNN",
+        "url": "https://cnnespanol.cnn.com/",
+        "title": "",
+        "description": "Muere la actriz Annie Wersching, conocida por su trabajo en la serie “24”"
+    })
+    assert response.status_code == 200
+    assert response.json()["label"] == "Entertainment"
 
 
 def test_predict_non_ascii():
     """
-    [TO BE IMPLEMENTED]
     Test the "/predict" endpoint, with an input text that has non-ASCII characters. 
     Does the tokenizer and classifier handle this case correctly? Does it return an error?
     """
-    pass
+    response = client.post("/predict", 
+    json={
+        "source": "CNN",
+        "url": "https://cnnespanol.cnn.com/",
+        "title": "",
+        "description": "Pandemia de covid-19, tres años después: ¿que más hay por entender?"
+    })
+    assert response.status_code == 200
+    assert response.json()["label"] == "Health"
