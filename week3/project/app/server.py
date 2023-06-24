@@ -1,3 +1,7 @@
+import json
+import math
+import time
+from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel
 from loguru import logger
@@ -19,6 +23,7 @@ class PredictResponse(BaseModel):
 
 MODEL_PATH = "../data/news_classifier.joblib"
 LOGS_OUTPUT_PATH = "../data/logs.out"
+global_data = {}
 
 app = FastAPI()
 
@@ -34,6 +39,11 @@ def startup_event():
     Access to the model instance and log file will be needed in /predict endpoint, make sure you
     store them as global variables
     """
+
+    global_data['file_log_handler'] = open(LOGS_OUTPUT_PATH, 'w+')
+    global_data['cls'] = NewsCategoryClassifier(verbose=True)
+    global_data['cls'].load(MODEL_PATH)
+
     logger.info("Setup completed")
 
 
@@ -45,6 +55,10 @@ def shutdown_event():
     1. Make sure to flush the log file and close any file pointers to avoid corruption
     2. Any other cleanups
     """
+
+    if global_data['file_log_handler'] is not None:
+        global_data['file_log_handler'].close()
+        global_data['file_log_handler'] = None
     logger.info("Shutting down application")
 
 
@@ -65,7 +79,27 @@ def predict(request: PredictRequest):
     }
     3. Construct an instance of `PredictResponse` and return
     """
-    response = PredictResponse(scores={"label1": 0.9, "label2": 0.1}, label="label1")
+
+    t0 = time.monotonic_ns()
+    X = {
+        'source': request.source,
+        'url': request.url,
+        'title': request.title,
+        'description': request.description
+    }
+    probs = global_data['cls'].predict_proba(X)
+    label = global_data['cls'].predict_label(X)
+    response = PredictResponse(scores=probs, label=label)
+    t1 = time.monotonic_ns()
+
+    log = {
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'request': request.dict(),
+        'latency(ms)': (t1 - t0) / 1000000
+    }
+    global_data['file_log_handler'].write(json.dumps(log) + '\n')
+    global_data['file_log_handler'].flush()
+
     return response
 
 

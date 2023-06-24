@@ -1,8 +1,6 @@
 from typing import List
-
 from loguru import logger
 import joblib
-
 from sentence_transformers import SentenceTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
@@ -72,7 +70,12 @@ class NewsCategoryClassifier:
             ...
         }
         """
-        return {}
+        X = [
+            model_input['title'] + ' | ' + model_input['description']
+        ]
+        probs = self.pipeline.predict_proba(X)[0]
+
+        return dict(zip(self.classes, probs))
 
     def predict_label(self, model_input: dict) -> str:
         """
@@ -83,4 +86,12 @@ class NewsCategoryClassifier:
 
         Output format: predicted label for the model input
         """
-        return ""
+        probs = self.predict_proba(model_input)
+        highest_prob = 0
+        label = ""
+        for k, v in probs.items():
+            if v > highest_prob:
+                highest_prob = v
+                label = k
+
+        return label
